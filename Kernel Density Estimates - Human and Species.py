@@ -90,13 +90,14 @@ df_species = df[df['Animal'].isin(['Human'] + wildlife_species)].copy() # prepar
 df_species['Time'] = pd.to_datetime(df_species['Time'], format='%H:%M:%S', errors='coerce') # ensure Time is datetime
 df_species['Time_minutes'] = df_species['Time'].dt.hour * 60 + df_species['Time'].dt.minute # minutes since midnight
 df_species['Time_radians'] = df_species['Time_minutes'] * (2 * np.pi / 1440)
+df_species = df_species.loc[df_species.index.repeat(df_species['Count'])].reset_index(drop=True)
 
 # Setup bootstrapping
 bootstrap_samples = 10  # (Change to 10000 for final version)
 time_grid = np.linspace(0, 2 * np.pi, 240)  # 0–2π radians for 24h
 
 # Set up the von Mises KDE
-def vonmises_kde(samples, kappa=8, grid_points=240):
+def vonmises_kde(samples, kappa=15, grid_points=240):
     grid = np.linspace(0, 2*np.pi, grid_points)
     density = np.zeros_like(grid)
     for sample in samples:
@@ -299,7 +300,7 @@ for wildlife in wildlife_species:
     )
 
     # Customize y-axis
-    plt.ylim(-0.00005, .6)
+    plt.ylim(-0.00005, .65)
     plt.yticks(fontsize=12)
 
     # Set axis labels
