@@ -10,9 +10,6 @@ from sklearn.utils import resample
 
 # Import dataset
 df = pd.read_csv('Dataset.csv')
-df_wl_raw = pd.read_csv('Datasets/water-levels.csv')
-df_cd = pd.read_csv('Datasets/climate-daily.csv')
-df_ss = pd.read_csv('Datasets/Sunrise and Sunset.csv')
 
 #endregion
 
@@ -27,22 +24,6 @@ df['Animal'] = df['Animal'].replace({'Alex': 'Human', 'Person': 'Human', 'Racoon
 
 # Correct values in column Animal
 df = df[~df['Animal'].isin(['Squirrel', 'Snake', 'Heron', 'Eagle', 'Bunny', 'Birds'])]
-
-#endregion
-
-# ---------------------------------------- ADJUST COLUMNS IN WATER LEVEL DATASET ---------------------------------------
-#region
-
-# Create a date column
-df_wl_raw['Date'] = df_wl_raw['Date (CST)'].str.split().str[0]
-print(df_wl_raw.head())
-
-# Group by Date and summarize Value(m)
-df_wl = df_wl_raw.groupby('Date')['Value(m)'].agg(
-    Max_Level='max',
-    Min_Level='min',
-    Average_Level='mean'
-).reset_index()
 
 #endregion
 
@@ -138,24 +119,6 @@ mean_human_kde = np.mean(all_human_kdes, axis=0)
 ## Define simple line styles
 human_line_style = {'color': 'black', 'linestyle': '-', 'linewidth': 2}
 wildlife_line_style = {'color': 'blue', 'linestyle': '--', 'linewidth': 2}
-
-## Set up sunrise and sunset dataframe
-# Ensure Sunrise and Sunset are datetime.time type
-df_ss['Sunrise'] = pd.to_datetime(df_ss['Sunrise'], format='%H:%M', errors='coerce').dt.time
-df_ss['Sunset'] = pd.to_datetime(df_ss['Sunset'], format='%H:%M', errors='coerce').dt.time
-
-# Ensure Nautical Twighlight are datetime.time type
-df_ss['Nautical Twilight start'] = pd.to_datetime(df_ss['Nautical Twilight start'], format='%H:%M', errors='coerce').dt.time
-df_ss['Nautical Twilight end'] = pd.to_datetime(df_ss['Nautical Twilight end'], format='%H:%M', errors='coerce').dt.time
-
-# Convert Sunrise and Sunset to minutes since midnight
-def time_to_minutes(t):
-    return t.hour * 60 + t.minute
-
-df_ss['Sunrise_minutes'] = df_ss['Sunrise'].apply(time_to_minutes)
-df_ss['Sunset_minutes'] = df_ss['Sunset'].apply(time_to_minutes)
-df_ss['Nautical Twilight start_minutes'] = df_ss['Nautical Twilight start'].apply(time_to_minutes)
-df_ss['Nautical Twilight end_minutes'] = df_ss['Nautical Twilight end'].apply(time_to_minutes)
 
 # von Mises KDE function 2
 def vonmises_kde_eval(samples, eval_points, kappa=8):
