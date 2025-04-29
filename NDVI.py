@@ -1,5 +1,3 @@
-# This script calculates NDVI for the wildlife area (Elk Island Provincial Park) and the inhabited area (RM of Victoria Beach)
-
 import rasterio
 import numpy as np
 from xml.dom import minidom
@@ -334,5 +332,14 @@ for date_elk, ndvi_elk, date_vb, ndvi_vb in zip(ndvi_dates_elk, ndvi_means_elk, 
         continue
     diff = ndvi_elk - ndvi_vb
     print(f"{date_elk.strftime('%Y-%m-%d')}: {diff:.4f}")
+
+#endregion
+
+## -------------------------------------------------- ELK ISLAND NDVI --------------------------------------------------
+#region
+
+print("\nElk Island NDVI Values:")
+for date, ndvi in zip(ndvi_dates_elk, ndvi_means_elk):
+    print(f"{date.strftime('%Y-%m-%d')}: {ndvi:.4f}")
 
 #endregion
