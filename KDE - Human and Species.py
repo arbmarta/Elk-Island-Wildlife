@@ -36,8 +36,8 @@ df['Date'] = pd.to_datetime(df['Date'], format='%Y-%m-%d')
 # Filter for Human observations only
 human_df = df[df['Animal'] == 'Human']
 
-# Filter starting from May 10, 2023
-human_df = human_df[human_df['Date'] >= '2023-05-10']
+# Filter starting from May 4, 2023
+human_df = human_df[human_df['Date'] >= '2023-05-04']
 
 # Set Date as index
 human_df = human_df.set_index('Date')
@@ -300,7 +300,7 @@ for wildlife in wildlife_species:
     )
 
     # Customize y-axis
-    plt.ylim(-0.00005, .65)
+    plt.ylim(-0.00005, .7)
     plt.yticks(fontsize=12)
 
     # Set axis labels
