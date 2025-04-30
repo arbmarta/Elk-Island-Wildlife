@@ -42,7 +42,7 @@ df_species = df_species.loc[df_species.index.repeat(df_species['Count'])].reset_
 df_species['Date'] = pd.to_datetime(df_species['Date'])
 
 # Set start date and create week bins
-start_date = pd.to_datetime("2023-05-10") # Wednesday start date
+start_date = pd.to_datetime("2023-05-04") # Wednesday start date
 df_species['Week'] = ((df_species['Date'] - start_date).dt.days // 7) + 1  # Week 1 starts at May 10, 2023
 
 # Count number of detections per species per week
@@ -57,7 +57,7 @@ pivot_df = detections_per_week.pivot(index='Week', columns='Animal', values='Det
 # Map Week number to actual start date
 week_start_dates = pd.DataFrame({
     'Week': pivot_df.index,
-    'Week Start Date': pd.to_datetime("2023-05-10") + pd.to_timedelta(pivot_df.index - 1, unit='W')
+    'Week Start Date': pd.to_datetime("2023-05-04") + pd.to_timedelta(pivot_df.index - 1, unit='W')
 })
 
 # Merge into pivot_df
@@ -103,53 +103,100 @@ ndvi_differences = [
     ("2023-09-27", 0.0039),
 ]
 
-# Convert list to DataFrame
 ndvi_df = pd.DataFrame(ndvi_differences, columns=['Date', 'NDVI Difference'])
 ndvi_df['Date'] = pd.to_datetime(ndvi_df['Date'])
 
-# Create list of weeks (using same logic as above)
-weeks = df_species['Week'].unique()
-week_start_dates = [pd.to_datetime("2023-05-10") + pd.Timedelta(weeks=int(w)-1, unit='W') for w in weeks]
-week_df = pd.DataFrame({'Week': weeks, 'Week_Start_Date': week_start_dates})
+#endregion
 
-# Find closest NDVI date to each week
-def closest_ndvi_value(week_date):
+# ---------------------------------------------- ELK ISLAND NDVI PER WEEK ----------------------------------------------
+#region
+
+# NDVI Elk Island values
+elk_island_ndvi_values = [
+    ("2023-05-26", 0.7470),
+    ("2023-06-06", 0.8425),
+    ("2023-06-10", 0.8425),
+    ("2023-06-11", 0.7657),
+    ("2023-06-12", 0.8435),
+    ("2023-06-15", 0.7192),
+    ("2023-06-20", 0.8321),
+    ("2023-07-06", 0.8378),
+    ("2023-07-06", 0.8419),
+    ("2023-07-20", 0.7850),
+    ("2023-07-21", 0.6062),
+    ("2023-07-27", 0.8441),
+    ("2023-08-03", 0.8122),
+    ("2023-08-18", 0.6418),
+    ("2023-08-27", 0.8234),
+    ("2023-09-20", 0.7439),
+    ("2023-09-26", 0.7746),
+    ("2023-09-27", 0.7258),
+    ("2023-09-27", 0.7179),
+]
+
+ndvi_ei_df = pd.DataFrame(elk_island_ndvi_values, columns=['Date', 'NDVI Elk Island'])
+ndvi_ei_df['Date'] = pd.to_datetime(ndvi_ei_df['Date'])
+
+#endregion
+
+# -------------------------------------------- ASSIGN TO WEEKS ---------------------------------------------------------
+#region
+
+# Create list of weeks and week start dates
+weeks = df_species['Week'].unique()
+week_start_dates = [pd.to_datetime("2023-05-04") + pd.Timedelta(weeks=int(w)-1, unit='W') for w in weeks]
+week_df = pd.DataFrame({'Week': weeks, 'Week_Start_Date': week_start_dates})
+week_df_ei = week_df.copy()
+
+# Match closest NDVI difference value
+def closest_ndvi_diff(week_date):
     closest_idx = (ndvi_df['Date'] - week_date).abs().idxmin()
     return ndvi_df.loc[closest_idx, 'NDVI Difference']
 
-# Apply function
-week_df['NDVI Difference'] = week_df['Week_Start_Date'].apply(closest_ndvi_value)
+week_df['NDVI Difference'] = week_df['Week_Start_Date'].apply(closest_ndvi_diff)
 
-# Optional: merge with pivot_df if you want to include NDVI in the weekly detections DataFrame
-df_weekly_with_ndvi = pivot_df.merge(week_df[['Week', 'NDVI Difference']], left_index=True, right_on='Week')
+# Match closest Elk Island NDVI value
+def closest_elk_ndvi(week_date):
+    closest_idx = (ndvi_ei_df['Date'] - week_date).abs().idxmin()
+    return ndvi_ei_df.loc[closest_idx, 'NDVI Elk Island']
 
-# Reorder columns: 'Week' first, 'Week_Start_Date' second
-cols = ['Week', 'Week Start Date'] + [col for col in df_weekly_with_ndvi.columns if col not in ['Week', 'Week Start Date']]
+week_df_ei['NDVI Elk Island'] = week_df_ei['Week_Start_Date'].apply(closest_elk_ndvi)
+
+# Merge the two NDVI sources
+ndvi_merged = week_df.merge(week_df_ei[['Week', 'NDVI Elk Island']], on='Week')
+
+# Merge into main pivot_df
+df_weekly_with_ndvi = pivot_df.merge(ndvi_merged, left_index=True, right_on='Week')
+
+# Reorder columns
+cols = ['Week', 'Week_Start_Date'] + [col for col in df_weekly_with_ndvi.columns if col not in ['Week', 'Week_Start_Date']]
 df_weekly_with_ndvi = df_weekly_with_ndvi[cols]
 
 #endregion
 
-# ----------------------------------------------- MEAN WATER LEVEL PER WEEK --------------------------------------------
+# ------------------------------------------ MEAN AND MAX WATER LEVEL PER WEEK -----------------------------------------
 #region
 
 # Create a date column
 df_wl_raw['Date'] = df_wl_raw['Date (CST)'].str.split().str[0]
 df_wl_raw['Date'] = pd.to_datetime(df_wl_raw['Date'], errors='coerce')
 
-# Filter to dates starting from 2023-05-10
-df_wl = df_wl_raw[df_wl_raw['Date'] >= pd.to_datetime("2023-05-10")].copy()
+# Filter to dates starting from 2023-05-04
+df_wl = df_wl_raw[df_wl_raw['Date'] >= pd.to_datetime("2023-05-04")].copy()
 
 # Create Week number column
-start_date = pd.to_datetime("2023-05-10")
+start_date = pd.to_datetime("2023-05-04")
 df_wl['Week'] = ((df_wl['Date'] - start_date).dt.days // 7) + 1
 
-# Compute weekly mean for all numeric columns (adjust if needed)
-df_wl_weekly = df_wl.groupby('Week').mean(numeric_only=True).reset_index()
+# Group by week: compute both mean and max of 'Value(m)'
+df_wl_weekly = df_wl.groupby('Week').agg(
+    **{
+        'Mean Water Level': ('Value(m)', 'mean'),
+        'Max Water Level': ('Value(m)', 'max')
+    }
+).reset_index()
 
-# Rename 'Value(m)' to 'Mean Water Level'
-df_wl_weekly = df_wl_weekly.rename(columns={'Value(m)': 'Mean Water Level'})
-
-# Merge with your weekly detections + NDVI table
+# Merge with weekly detections + NDVI table
 df_weekly_with_ndvi = df_weekly_with_ndvi.merge(df_wl_weekly, on='Week', how='left')
 
 #endregion
@@ -161,10 +208,10 @@ df_weekly_with_ndvi = df_weekly_with_ndvi.merge(df_wl_weekly, on='Week', how='le
 df_cd['Date'] = pd.to_datetime(df_cd['Date'], errors='coerce')
 
 # Filter from the same start date
-df_cd = df_cd[df_cd['Date'] >= pd.to_datetime("2023-05-10")].copy()
+df_cd = df_cd[df_cd['Date'] >= pd.to_datetime("2023-05-04")].copy()
 
 # Assign Week number
-df_cd['Week'] = ((df_cd['Date'] - pd.to_datetime("2023-05-10")).dt.days // 7) + 1
+df_cd['Week'] = ((df_cd['Date'] - pd.to_datetime("2023-05-04")).dt.days // 7) + 1
 
 # Calculate weekly means and max
 df_cd_weekly = df_cd.groupby('Week').agg({
@@ -203,8 +250,8 @@ print(df_weekly.columns)
 
 # Variable categorization
 dependent_cols = ['Coyote', 'Deer', 'Raccoon']
-independent_cols = ['Human', 'NDVI Difference', 'Mean Water Level', 'Mean Temperature',
-                    'Maximum Temperature', 'Garbage Pickup']
+independent_cols = ['Human', 'NDVI Difference', 'NDVI Elk Island', 'Mean Water Level', 'Max Water Level',
+                    'Mean Temperature', 'Maximum Temperature', 'Garbage Pickup']
 
 # Correlations
 correlation_matrix = df_weekly[independent_cols].corr(method='pearson')
@@ -228,14 +275,26 @@ for col1 in correlation_matrix.columns:
 dependent_cols = ['Coyote', 'Deer', 'Raccoon']
 
 independent_sets = {
-    'Model 1': ['Human', 'NDVI Difference', 'Mean Water Level', 'Maximum Temperature', 'Garbage Pickup'],
-    'Model 2': ['Human', 'NDVI Difference', 'Mean Water Level', 'Mean Temperature', 'Garbage Pickup'],
+    'Model 1 (Mean Water, Max Temp)': ['Human', 'NDVI Difference', 'NDVI Elk Island', 'Mean Water Level',
+                                       'Maximum Temperature', 'Garbage Pickup'],
+    'Model 2 (Mean Water, Mean Temp)': ['Human', #'NDVI Difference',
+                                        'NDVI Elk Island', 'Mean Water Level',
+                                        'Mean Temperature', 'Garbage Pickup'],
+    'Model 3 (Max Water, Max Temp)': ['Human', #'NDVI Difference',
+                                      'NDVI Elk Island', 'Max Water Level',
+                                      'Maximum Temperature', 'Garbage Pickup'],
+    'Model 4 (Max Water, Mean Temp)': ['Human', #'NDVI Difference',
+                                       'NDVI Elk Island', 'Max Water Level',
+                                       'Mean Temperature', 'Garbage Pickup']
 }
 
 # Linear regression
 for dep in dependent_cols:
+    best_aic = float('inf')
+    best_model_name = None
+    best_model = None
+
     for model_name, indep_cols in independent_sets.items():
-        # Subset and clean data
         X = df_weekly[indep_cols]
         y = df_weekly[dep]
         combined = pd.concat([X, y], axis=1).replace([np.inf, -np.inf], np.nan).dropna()
@@ -244,7 +303,14 @@ for dep in dependent_cols:
         y_clean = combined[dep]
 
         model = sm.OLS(y_clean, X_clean).fit()
-        print(f"\n{model_name} | Dependent: {dep}")
-        print(model.summary())
+
+        if model.aic < best_aic:
+            best_aic = model.aic
+            best_model_name = model_name
+            best_model = model
+
+    # Print only the best model for this dependent variable
+    print(f"\nBest model for {dep}: {best_model_name} (AIC = {best_aic:.2f})")
+    print(best_model.summary())
 
 #endregion
