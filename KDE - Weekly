@@ -1,0 +1,270 @@
+# -------------------------------------------- IMPORT PACKAGES AND DATASETS --------------------------------------------
+#region
+
+# Import packages
+import pandas as pd
+import matplotlib.pyplot as plt
+import numpy as np
+from scipy.stats import vonmises, chi2, gaussian_kde
+from sklearn.utils import resample
+
+# Import dataset
+df = pd.read_csv('Dataset.csv')
+
+#endregion
+
+# ----------------------------------------- ADJUST COLUMNS IN DETECTION DATASET ----------------------------------------
+#region
+
+# Create cardinal direction column
+df['Cardinal Direction'] = df['Location'].replace({'Marsh': 'West', 'Pond': 'East'})
+
+# Correct values in column Animal
+df['Animal'] = df['Animal'].replace({'Alex': 'Human', 'Person': 'Human', 'Racoon': 'Raccoon'})
+
+# Correct values in column Animal
+df = df[~df['Animal'].isin(['Squirrel', 'Snake', 'Heron', 'Eagle', 'Bunny', 'Birds'])]
+
+# Filter for one week starting May 4, 2023
+df['DateTime'] = pd.to_datetime(df['Date'] + ' ' + df['Time'], errors='coerce')
+df['Week'] = (df['DateTime'] - pd.to_timedelta((df['DateTime'].dt.dayofweek - 3) % 7, unit='d')).dt.normalize()
+
+#endregion
+
+# ------------------------------------------ FIGURE 2 - KDE AND OVERLAP SETUP ------------------------------------------
+#region
+
+# Prepare dataframe rows of animals for KDEs
+wildlife_species = ['Human', 'Coyote', 'Raccoon', 'Deer']
+df_species = df[df['Animal'].isin(wildlife_species)].copy()
+df_species['Time'] = pd.to_datetime(df_species['Time'], format='%H:%M:%S', errors='coerce') # ensure Time is datetime
+df_species['Time_minutes'] = df_species['Time'].dt.hour * 60 + df_species['Time'].dt.minute # minutes since midnight
+df_species['Time_radians'] = df_species['Time_minutes'] * (2 * np.pi / 1440)
+df_species = df_species.loc[df_species.index.repeat(df_species['Count'])].reset_index(drop=True)
+
+# Setup bootstrapping
+bootstrap_samples = 10  # (Change to 10000 for final version)
+time_grid = np.linspace(0, 2 * np.pi, 240)  # 0–2π radians for 24h
+
+# Bin into custom 3-hour windows centered at 0, 3, ..., 21
+def bin_time_to_interval(hour):
+    centers = np.array([0, 3, 6, 9, 12, 15, 18, 21])
+    distances = np.abs(centers - hour)
+    return centers[np.argmin(distances)]
+
+df_species['Hour'] = df_species['Time'].dt.hour + df_species['Time'].dt.minute / 60
+df_species['Hour_Bin'] = df_species['Hour'].apply(bin_time_to_interval)
+
+# Set up the von Mises KDE
+def vonmises_kde(samples, kappa=15, grid_points=240):
+    grid = np.linspace(0, 2*np.pi, grid_points)
+    density = np.zeros_like(grid)
+    for sample in samples:
+        density += vonmises.pdf(grid, kappa, loc=sample)
+    density /= len(samples)
+    return grid, density
+
+## Define simple line styles
+coming_line_style = {'color': 'black', 'linestyle': '-', 'linewidth': 2}
+going_line_style = {'color': 'blue', 'linestyle': '--', 'linewidth': 2}
+
+# von Mises KDE function 2
+def vonmises_kde_eval(samples, eval_points, kappa=8):
+    """
+    Evaluates von Mises KDE at given points.
+    """
+    densities = np.zeros_like(eval_points)
+    for sample in samples:
+        densities += vonmises.pdf(eval_points, kappa, loc=sample)
+    densities /= len(samples)
+    return densities
+
+# Delta 4 overlap (for n > 50)
+def delta4_overlap(human_samples, wildlife_samples, kappa=8):
+
+    # Evaluate KDEs at sample points
+    f_x = vonmises_kde_eval(human_samples, human_samples, kappa)     # f̂(xᵢ)
+    g_x = vonmises_kde_eval(wildlife_samples, human_samples, kappa)  # ĝ(xᵢ)
+
+    f_y = vonmises_kde_eval(human_samples, wildlife_samples, kappa)  # f̂(yⱼ)
+    g_y = vonmises_kde_eval(wildlife_samples, wildlife_samples, kappa)  # ĝ(yⱼ)
+
+    # Compute min ratios
+    part1 = np.mean(np.minimum(1, g_x / f_x))
+    part2 = np.mean(np.minimum(1, f_y / g_y))
+
+    delta4 = 0.5 * (part1 + part2)
+    return delta4
+
+# Delta 1 overlap (for n < 50)
+def delta1_overlap(human_samples, wildlife_samples, kappa=8, grid_points=240):
+    grid = np.linspace(0, 2 * np.pi, grid_points)
+
+    f = vonmises_kde_eval(human_samples, grid, kappa)
+    g = vonmises_kde_eval(wildlife_samples, grid, kappa)
+
+    delta1 = (2 * np.pi / grid_points) * np.sum(np.minimum(f, g))
+    return delta1
+
+# Wald test function
+def wald_test_vm(human_samples, wildlife_samples, n_bootstrap=1000):
+    human_means = []
+    wildlife_means = []
+
+    for _ in range(n_bootstrap):
+        hs = resample(human_samples, replace=True)
+        ws = resample(wildlife_samples, replace=True)
+
+        _, loc1, _ = vonmises.fit(hs, fscale=1)
+        _, loc2, _ = vonmises.fit(ws, fscale=1)
+
+        human_means.append(loc1)
+        wildlife_means.append(loc2)
+
+    loc1_mean = np.mean(human_means)
+    loc2_mean = np.mean(wildlife_means)
+    se1 = np.std(human_means)
+    se2 = np.std(wildlife_means)
+
+    W = (loc1_mean - loc2_mean) ** 2 / (se1 ** 2 + se2 ** 2)
+    p_val = 1 - chi2.cdf(W, df=1)
+
+    return loc1_mean, loc2_mean, W, p_val
+
+#endregion
+
+# ------------------------------------------- FIGURE 2 - COEFFICIENT OF OVERLAP ----------------------------------------
+#region
+
+# Setup
+alpha = 0.05
+
+# Loop through each wildlife species
+for wildlife in wildlife_species:
+
+    # Separate Coming and Going times for the current wildlife species
+    coming_times = df_species[(df_species['Animal'] == wildlife) & (df_species['Direction'] == 'Coming')]['Time_radians'].dropna().values
+    going_times = df_species[(df_species['Animal'] == wildlife) & (df_species['Direction'] == 'Going')]['Time_radians'].dropna().values
+
+    # Check if enough data exists
+    if len(coming_times) == 0 or len(going_times) == 0:
+        print(f"\n{wildlife}: Not enough data for Coming vs Going comparison.")
+        continue
+
+    # Bootstrap overlap coefficients
+    overlaps = []
+    for _ in range(bootstrap_samples):
+        coming_sample = resample(coming_times, replace=True)
+        going_sample = resample(going_times, replace=True)
+
+        coming_density = vonmises_kde_eval(coming_sample, time_grid, kappa=8)
+        going_density = vonmises_kde_eval(going_sample, time_grid, kappa=8)
+
+        overlap = (2 * np.pi / len(time_grid)) * np.sum(np.minimum(coming_density, going_density))
+        overlaps.append(overlap)
+
+    overlaps = np.array(overlaps)
+    overlap_mean = np.mean(overlaps)
+    overlap_ci_lower = np.percentile(overlaps, 100 * alpha / 2)
+    overlap_ci_upper = np.percentile(overlaps, 100 * (1 - alpha / 2))
+
+    # Compute Δ₁ (grid-based)
+    delta1 = delta1_overlap(coming_times, going_times, kappa=8)
+
+    # Compute Δ₄ (sample-based)
+    delta4 = delta4_overlap(coming_times, going_times, kappa=8)
+
+    # Wald test
+    loc1, loc2, W, p_value = wald_test_vm(coming_times, going_times, n_bootstrap=1000)
+
+    # Print results
+    print(f"\n{wildlife} (Coming vs Going):")
+    print(f"Δ₁ (grid method) = {delta1:.3f}")
+    print(f"Δ₄ (sample method) = {delta4:.3f}")
+    print(f"Overlap Coefficient (mean): {overlap_mean:.3f}")
+    print(f"95% CI: [{overlap_ci_lower:.3f}, {overlap_ci_upper:.3f}]")
+    print(f"Wald test (von Mises) χ² (W) = {W:.3f}, p = {p_value:.4f}")
+    if p_value < 0.05:
+        print("→ Significant difference between Coming and Going.")
+    else:
+        print("→ No significant difference between Coming and Going.")
+
+#endregion
+
+# ----------------------------------------------- FIGURE 2 - PLOT THE KDE ----------------------------------------------
+#region
+
+# Convert time to minutes since May 4
+df_species['Minutes_Since_WeekStart'] = (df_species['DateTime'] - df_species['Week']).dt.total_seconds() / 60
+
+# Define 3-hour bin centers (in minutes)
+bin_centers = np.arange(90, 10080, 180)  # 1 week = 7 days * 24h * 60 min = 10080
+bin_edges = [(center - 90, center + 90) for center in bin_centers]
+
+# Plot each species
+for wildlife in wildlife_species:
+
+    subset = df_species[df_species['Animal'] == wildlife]
+
+    coming = subset[subset['Direction'] == 'Coming']
+    going = subset[subset['Direction'] == 'Going']
+
+    # KDE for Coming
+    coming_times = coming['Minutes_Since_WeekStart'].dropna().values
+    if len(coming_times) == 0:
+        continue
+    coming_kde = gaussian_kde(coming_times, bw_method=0.2)
+    x_vals = np.linspace(0, 10080, 1000)
+    y_coming = coming_kde(x_vals)
+
+    # KDE for Going
+    going_times = going['Minutes_Since_WeekStart'].dropna().values
+    if len(going_times) == 0:
+        continue
+    going_kde = gaussian_kde(going_times, bw_method=0.2)
+    y_going = going_kde(x_vals)
+
+    # Plot
+    plt.figure(figsize=(12, 6))
+
+    # Plot density curves
+    plt.plot(x_vals, y_coming, label='Returning to Island', **coming_line_style)
+    plt.plot(x_vals, y_going, label='Leaving Island', **going_line_style)
+
+    # Background shading for days
+    plt.axvspan(2880, 4320, color='lightblue', alpha=0.2, zorder=0)  # Saturday
+    plt.axvspan(4320, 5760, color='lightblue', alpha=0.2, zorder=0)  # Sunday
+    plt.axvspan(5760, 7200, color='lightgrey', alpha=0.2, zorder=0)  # Monday
+    plt.axvspan(7200, 8640, color='lightgrey', alpha=0.2, zorder=0)  # Tuesday
+    plt.axvspan(8640, 10080, color='lightgrey', alpha=0.2, zorder=0)  # Wednesday
+
+    # Get current y-limit to position text inside the plot
+    ymax = plt.ylim()[1]
+
+    # Add labels within the plot area
+    plt.text(4320, ymax * 0.95, 'Weekend Days', ha='center', va='top', fontsize=14, color='blue', fontweight='bold')
+    plt.text(7920, ymax * 0.95, 'Garbage Pickup Days', ha='center', va='top', fontsize=14, color='dimgray',
+             fontweight='bold')
+
+    # Overlap
+    plt.fill_between(x_vals, np.minimum(y_coming, y_going), color='grey', alpha=0.5, label='Overlap')
+
+    # One tick per day (every 1440 minutes)
+    xtick_locs = np.arange(0, 10081, 1440)  # 0 to 10080 by 1440 mins (1 day)
+
+    # Day labels starting on Thursday
+    xtick_labels = ['Thu', 'Fri', 'Sat', 'Sun', 'Mon', 'Tue', 'Wed', 'Thu']
+
+    # Formatting
+    plt.xticks(xtick_locs, xtick_labels, rotation=45, fontsize=10)
+    plt.yticks(fontsize=12)
+    plt.xlim(0, 10080)
+    plt.ylim(bottom = 0)
+    plt.xlabel('Day of Week: Time', fontsize=12, fontweight='bold')
+    plt.ylabel('Density', fontsize=12, fontweight='bold')
+    plt.title(f'{wildlife} (Returning vs Leaving)', fontsize=13, fontweight='bold')
+    plt.legend()
+    plt.tight_layout()
+    plt.show()
+
+#endregion
