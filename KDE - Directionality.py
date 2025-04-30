@@ -238,7 +238,7 @@ for wildlife in wildlife_species:
         alpha=0.5,
         zorder=3
     )
-    
+
     # Customize x-axis
     plt.xlim(0, 2 * np.pi)
     plt.xticks(
