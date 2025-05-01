@@ -43,47 +43,53 @@ plt.show()
 
 # Satellite images
 metadata_files = [
+    "Datasets/PSScene/20230506_162314_08_2459_3B_AnalyticMS_metadata_clip.xml",
+    "Datasets/PSScene/20230515_163345_31_24a8_3B_AnalyticMS_metadata_clip.xml", #2
     "Datasets/PSScene/20230526_170711_76_248c_3B_AnalyticMS_metadata_clip.xml",
-    "Datasets/PSScene/20230606_163226_61_2430_3B_AnalyticMS_metadata_clip.xml", #2
+    "Datasets/PSScene/20230606_163226_61_2430_3B_AnalyticMS_metadata_clip.xml", #4
     "Datasets/PSScene/20230610_163206_53_241e_3B_AnalyticMS_metadata_clip.xml",
-    "Datasets/PSScene/20230611_165718_65_225a_3B_AnalyticMS_metadata_clip.xml", #4
+    "Datasets/PSScene/20230611_165718_65_225a_3B_AnalyticMS_metadata_clip.xml", #6
     "Datasets/PSScene/20230612_161507_28_2445_3B_AnalyticMS_metadata_clip.xml",
-    "Datasets/PSScene/20230615_170517_56_2473_3B_AnalyticMS_metadata_clip.xml", #6
+    "Datasets/PSScene/20230615_170517_56_2473_3B_AnalyticMS_metadata_clip.xml", #8
     "Datasets/PSScene/20230620_171154_54_247b_3B_AnalyticMS_metadata_clip.xml",
-    "Datasets/PSScene/20230706_163214_07_24a8_3B_AnalyticMS_metadata_clip.xml", #8
+    "Datasets/PSScene/20230706_163214_07_24a8_3B_AnalyticMS_metadata_clip.xml", #10
     "Datasets/PSScene/20230706_170947_74_227a_3B_AnalyticMS_metadata_clip.xml",
-    "Datasets/PSScene/20230720_163341_38_24c8_3B_AnalyticMS_metadata_clip.xml", #10
+    "Datasets/PSScene/20230720_163341_38_24c8_3B_AnalyticMS_metadata_clip.xml", #12
     "Datasets/PSScene/20230721_163301_79_24b9_3B_AnalyticMS_metadata_clip.xml",
-    "Datasets/PSScene/20230727_163200_50_2429_3B_AnalyticMS_metadata_clip.xml", #12
+    "Datasets/PSScene/20230727_163200_50_2429_3B_AnalyticMS_metadata_clip.xml", #14
     "Datasets/PSScene/20230803_171343_83_2490_3B_AnalyticMS_metadata_clip.xml",
-    "Datasets/PSScene/20230818_171408_92_2473_3B_AnalyticMS_metadata_clip.xml", #14
+    "Datasets/PSScene/20230818_171408_92_2473_3B_AnalyticMS_metadata_clip.xml", #16
     "Datasets/PSScene/20230827_171130_02_248c_3B_AnalyticMS_metadata_clip.xml",
-    "Datasets/PSScene/20230920_171227_80_248b_3B_AnalyticMS_metadata_clip.xml", #16
+    "Datasets/PSScene/20230920_171227_80_248b_3B_AnalyticMS_metadata_clip.xml", #18
     "Datasets/PSScene/20230926_163041_39_2460_3B_AnalyticMS_metadata_clip.xml",
-    "Datasets/PSScene/20230927_163308_06_2440_3B_AnalyticMS_metadata_clip.xml",  # 18
-    "Datasets/PSScene/20230927_171214_21_2486_3B_AnalyticMS_metadata_clip.xml"
+    "Datasets/PSScene/20230927_163308_06_2440_3B_AnalyticMS_metadata_clip.xml", #20
+    "Datasets/PSScene/20230927_171214_21_2486_3B_AnalyticMS_metadata_clip.xml",
+    "Datasets/PSScene/20231010_171755_65_2482_3B_AnalyticMS_metadata_clip.xml" #22
 ]
 
 sr_files = [
+    "Datasets/PSScene/20230506_162314_08_2459_3B_AnalyticMS_SR_clip.tif",
+    "Datasets/PSScene/20230515_163345_31_24a8_3B_AnalyticMS_SR_clip.tif", #2
     "Datasets/PSScene/20230526_170711_76_248c_3B_AnalyticMS_SR_clip.tif",
-    "Datasets/PSScene/20230606_163226_61_2430_3B_AnalyticMS_SR_clip.tif", #2
+    "Datasets/PSScene/20230606_163226_61_2430_3B_AnalyticMS_SR_clip.tif", #4
     "Datasets/PSScene/20230610_163206_53_241e_3B_AnalyticMS_SR_clip.tif",
-    "Datasets/PSScene/20230611_165718_65_225a_3B_AnalyticMS_SR_clip.tif", #4
+    "Datasets/PSScene/20230611_165718_65_225a_3B_AnalyticMS_SR_clip.tif", #6
     "Datasets/PSScene/20230612_161507_28_2445_3B_AnalyticMS_SR_clip.tif",
-    "Datasets/PSScene/20230615_170517_56_2473_3B_AnalyticMS_SR_clip.tif", #6
+    "Datasets/PSScene/20230615_170517_56_2473_3B_AnalyticMS_SR_clip.tif", #8
     "Datasets/PSScene/20230620_171154_54_247b_3B_AnalyticMS_SR_clip.tif",
-    "Datasets/PSScene/20230706_163214_07_24a8_3B_AnalyticMS_SR_clip.tif", #8
+    "Datasets/PSScene/20230706_163214_07_24a8_3B_AnalyticMS_SR_clip.tif", #10
     "Datasets/PSScene/20230706_170947_74_227a_3B_AnalyticMS_SR_clip.tif",
-    "Datasets/PSScene/20230720_163341_38_24c8_3B_AnalyticMS_SR_clip.tif", #10
+    "Datasets/PSScene/20230720_163341_38_24c8_3B_AnalyticMS_SR_clip.tif", #12
     "Datasets/PSScene/20230721_163301_79_24b9_3B_AnalyticMS_SR_clip.tif",
-    "Datasets/PSScene/20230727_163200_50_2429_3B_AnalyticMS_SR_clip.tif", #12
+    "Datasets/PSScene/20230727_163200_50_2429_3B_AnalyticMS_SR_clip.tif", #14
     "Datasets/PSScene/20230803_171343_83_2490_3B_AnalyticMS_SR_clip.tif",
-    "Datasets/PSScene/20230818_171408_92_2473_3B_AnalyticMS_SR_clip.tif", #14
+    "Datasets/PSScene/20230818_171408_92_2473_3B_AnalyticMS_SR_clip.tif", #16
     "Datasets/PSScene/20230827_171130_02_248c_3B_AnalyticMS_SR_clip.tif",
-    "Datasets/PSScene/20230920_171227_80_248b_3B_AnalyticMS_SR_clip.tif", #16
+    "Datasets/PSScene/20230920_171227_80_248b_3B_AnalyticMS_SR_clip.tif", #18
     "Datasets/PSScene/20230926_163041_39_2460_3B_AnalyticMS_SR_clip.tif",
-    "Datasets/PSScene/20230927_163308_06_2440_3B_AnalyticMS_SR_clip.tif",  # 18
-    "Datasets/PSScene/20230927_171214_21_2486_3B_AnalyticMS_SR_clip.tif"
+    "Datasets/PSScene/20230927_163308_06_2440_3B_AnalyticMS_SR_clip.tif", #20
+    "Datasets/PSScene/20230927_171214_21_2486_3B_AnalyticMS_SR_clip.tif",
+    "Datasets/PSScene/20231010_M_171755_65_2482_3B_AnalyticMS_SR_clip.tif" #22
 ]
 
 #endregion
