@@ -6,6 +6,7 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import statsmodels.api as sm
 import numpy as np
+from scipy.stats import pearsonr
 
 # Import dataset
 df = pd.read_csv('Dataset.csv')
@@ -82,6 +83,8 @@ plt.show()
 
 # NDVI difference values
 ndvi_differences = [
+    ("2023-05-06", 0.0595),
+    ("2023-05-15", 0.0099),
     ("2023-05-26", 0.0651),
     ("2023-06-06", 0.0596),
     ("2023-06-10", 0.0557),
@@ -101,6 +104,7 @@ ndvi_differences = [
     ("2023-09-26", 0.0191),
     ("2023-09-27", 0.0100),
     ("2023-09-27", 0.0039),
+    ("2023-10-10", 0.0326)
 ]
 
 ndvi_df = pd.DataFrame(ndvi_differences, columns=['Date', 'NDVI Difference'])
@@ -113,6 +117,8 @@ ndvi_df['Date'] = pd.to_datetime(ndvi_df['Date'])
 
 # NDVI Elk Island values
 elk_island_ndvi_values = [
+    ("2023-05-06", 0.6250),
+    ("2023-05-15", 0.4962),
     ("2023-05-26", 0.7470),
     ("2023-06-06", 0.8425),
     ("2023-06-10", 0.8425),
@@ -132,6 +138,7 @@ elk_island_ndvi_values = [
     ("2023-09-26", 0.7746),
     ("2023-09-27", 0.7258),
     ("2023-09-27", 0.7179),
+    ("2023-10-10", 0.7576)
 ]
 
 ndvi_ei_df = pd.DataFrame(elk_island_ndvi_values, columns=['Date', 'NDVI Elk Island'])
@@ -258,13 +265,16 @@ correlation_matrix = df_weekly[independent_cols].corr(method='pearson')
 
 # List unique pairs with correlation > 0.5 (excluding self-correlations)
 seen = set()
-for col1 in correlation_matrix.columns:
-    for col2 in correlation_matrix.columns:
+for col1 in independent_cols:
+    for col2 in independent_cols:
         if col1 != col2:
             pair = tuple(sorted((col1, col2)))
-            if pair not in seen and correlation_matrix.loc[col1, col2] > 0.5:
+            if pair not in seen:
                 seen.add(pair)
-                print(f"{col1} and {col2}: {correlation_matrix.loc[col1, col2]:.3f}")
+                valid_data = df_weekly[[col1, col2]].dropna()
+                r, p = pearsonr(valid_data[col1], valid_data[col2])
+                if r > 0.5:
+                    print(f"{col1} and {col2}: r = {r:.3f}, p = {p:.4f}")
 
 #endregion
 
